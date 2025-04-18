@@ -252,6 +252,21 @@ public class WebMvcSseServerTransportProvider implements McpServerTransportProvi
 			return ServerResponse.status(HttpStatus.SERVICE_UNAVAILABLE).body("Server is shutting down");
 		}
 
+		/*
+
+		// TODO 客户端唯一标识，用于处理session资源问题
+		if (!request.param("clientId").isPresent()) {
+			return ServerResponse.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Client ID missing in sse endpoint");
+		}
+
+		String sessionId = request.param("clientId").get();;
+		logger.debug("Creating new SSE connection for session: {}", sessionId);
+
+	    if (sessions.contains(sessionId)) {
+			sessions.get(sessionId).closeGracefully().block(Duration.ofSeconds(30));
+		}
+		 */
+
 		String sessionId = UUID.randomUUID().toString();
 		logger.debug("Creating new SSE connection for session: {}", sessionId);
 
