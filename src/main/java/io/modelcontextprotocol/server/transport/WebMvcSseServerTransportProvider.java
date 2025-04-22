@@ -193,7 +193,8 @@ public class WebMvcSseServerTransportProvider implements McpServerTransportProvi
 		logger.debug("Attempting to broadcast message to {} active sessions", sessions.size());
 
 		return Flux.fromIterable(sessions.values())
-			.flatMap(session -> session.sendNotification(method, params)
+			.flatMap(session ->
+					session.sendNotification(method, params)
 				.doOnError(
 						e -> logger.error("Failed to send message to session {}: {}", session.getId(), e.getMessage()))
 				.onErrorComplete())
@@ -348,6 +349,15 @@ public class WebMvcSseServerTransportProvider implements McpServerTransportProvi
 		catch (Exception e) {
 			logger.error("Error handling message: {}", e.getMessage());
 			return ServerResponse.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new McpError(e.getMessage()));
+		}
+	}
+
+	public void checkPing() {
+		try {
+			// org.apache.catalina.connector.ClientAbortException
+			notifyClients(McpSchema.METHOD_PING, null).block();
+		} catch (Exception e) {
+			logger.error("pingTimeout : {}", e.getMessage());
 		}
 	}
 

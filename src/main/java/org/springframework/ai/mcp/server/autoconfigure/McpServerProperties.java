@@ -125,6 +125,11 @@ public class McpServerProperties {
 	private ServerType type = ServerType.SYNC;
 
 	/**
+	 * 校验客户端连接超时
+	 */
+	private boolean checkPing = false;
+
+	/**
 	 * Server types supported by the MCP server.
 	 */
 	public enum ServerType {
@@ -257,4 +262,11 @@ public class McpServerProperties {
 		this.sessionTimeOutSecond = sessionTimeOutSecond;
 	}
 
+	public boolean isCheckPing() {
+		return checkPing;
+	}
+
+	public void setCheckPing(boolean checkPing) {
+		this.checkPing = checkPing;
+	}
 }

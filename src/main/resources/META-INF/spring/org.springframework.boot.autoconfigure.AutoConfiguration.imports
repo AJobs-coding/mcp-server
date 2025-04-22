@@ -1,1 +1,2 @@
 mcp.server.autoconfiguration.McpWebMvcServerTransportAutoConfiguration
+mcp.server.autoconfiguration.McpCustomConfiguration

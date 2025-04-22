@@ -74,6 +74,10 @@ public Mono<McpSchema.JSONRPCResponse> sessionCloseGracefully() {
 你以为完美解决了吗？  
 不，当mcp server多服务，则存在负载均衡问题。导致mcp server内存泄露  
 解决方案： 摆了，资源浪费很有限  
+当然还有一种解决方案： 定时去让服务端去ping客户端，出现异常后，服务端会清除无效的session（Bean注入默认关闭），代码维护：  
+mcp.server.autoconfiguration.McpCustomConfiguration.mcpScheduleTask  
+mcp.server.McpScheduleTask.checkPing
+
 
 我们假设mcp client是单一且长期存在的。  
 问题: mcp server重启，mcp客户端sse连接出现异常  
