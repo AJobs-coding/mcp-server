@@ -16,6 +16,7 @@
 
 package org.springframework.ai.mcp.server.autoconfigure;
 
+import mcp.server.McpScheduleTask;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.util.Assert;
 
@@ -122,7 +123,7 @@ public class McpServerProperties {
 	 * <li>ASYNC - Asynchronous server</li>
 	 * </ul>
 	 */
-	private ServerType type = ServerType.SYNC;
+	private ServerType type = ServerType.ASYNC;
 
 	/**
 	 * 校验客户端连接超时
@@ -150,6 +151,16 @@ public class McpServerProperties {
 	 * session超时时间
 	 */
 	private Integer sessionTimeOutSecond = 0;
+
+	/**
+	 * sse最大连接数：校验时，会浮动10个（maxSseConnectionCount+10）
+	 * 当时配置最大连接数时强烈建议你打开：
+	 * @see McpServerProperties#checkPing
+	 * 清除无效sse连接入口
+	 * @see McpScheduleTask#checkPing()
+	 * -1 不限制
+	 */
+	private Integer maxSseConnectionCount = -1;
 
 	/**
 	 * (Optional) response MIME type per tool name.
@@ -262,11 +273,19 @@ public class McpServerProperties {
 		this.sessionTimeOutSecond = sessionTimeOutSecond;
 	}
 
-	public boolean isCheckPing() {
+	public boolean getCheckPing() {
 		return checkPing;
 	}
 
 	public void setCheckPing(boolean checkPing) {
 		this.checkPing = checkPing;
+	}
+
+	public Integer getMaxSseConnectionCount() {
+		return maxSseConnectionCount;
+	}
+
+	public void setMaxSseConnectionCount(Integer maxSseConnectionCount) {
+		this.maxSseConnectionCount = maxSseConnectionCount;
 	}
 }

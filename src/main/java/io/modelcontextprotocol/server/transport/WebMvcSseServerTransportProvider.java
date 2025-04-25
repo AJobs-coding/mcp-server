@@ -14,8 +14,12 @@ import io.modelcontextprotocol.spec.McpServerSession;
 import io.modelcontextprotocol.spec.McpServerTransport;
 import io.modelcontextprotocol.spec.McpServerTransportProvider;
 import io.modelcontextprotocol.util.Assert;
+import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.ai.mcp.server.autoconfigure.McpServerProperties;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.servlet.function.RouterFunction;
 import org.springframework.web.servlet.function.RouterFunctions;
@@ -30,6 +34,7 @@ import java.time.Duration;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Server-side implementation of the Model Context Protocol (MCP) transport layer using
@@ -102,16 +107,23 @@ public class WebMvcSseServerTransportProvider implements McpServerTransportProvi
 	 * Map of active client sessions, keyed by session ID.
 	 */
 	private final ConcurrentHashMap<String, McpServerSession> sessions = new ConcurrentHashMap<>();
+	private final AtomicInteger sseConnectionCount = new AtomicInteger(0);
 
 	/**
 	 * Flag indicating if the transport is shutting down.
 	 */
 	private volatile boolean isClosing = false;
 
-	/**
-	 * session超时时间
-	 */
-	private Integer sessionTimeOutSecond;
+	@Autowired
+	private ApplicationContext applicationContext;
+
+	private McpServerProperties mcpServerProperties;
+
+	@PostConstruct
+	public void post() {
+		mcpServerProperties = applicationContext.getBean(McpServerProperties.class);
+	}
+
 
 	/**
 	 * Constructs a new WebMvcSseServerTransportProvider instance with the default SSE
@@ -138,7 +150,7 @@ public class WebMvcSseServerTransportProvider implements McpServerTransportProvi
 	 * @throws IllegalArgumentException if any parameter is null
 	 */
 	public WebMvcSseServerTransportProvider(ObjectMapper objectMapper, String messageEndpoint, String sseEndpoint) {
-		this(objectMapper, "", messageEndpoint, sseEndpoint, 0);
+		this(objectMapper, "", messageEndpoint, sseEndpoint);
 	}
 
 	/**
@@ -154,7 +166,7 @@ public class WebMvcSseServerTransportProvider implements McpServerTransportProvi
 	 * @throws IllegalArgumentException if any parameter is null
 	 */
 	public WebMvcSseServerTransportProvider(ObjectMapper objectMapper, String baseUrl, String messageEndpoint,
-                                            String sseEndpoint,Integer sessionTimeOutSecond) {
+                                            String sseEndpoint) {
 		Assert.notNull(objectMapper, "ObjectMapper must not be null");
 		Assert.notNull(baseUrl, "Message base URL must not be null");
 		Assert.notNull(messageEndpoint, "Message endpoint must not be null");
@@ -164,7 +176,6 @@ public class WebMvcSseServerTransportProvider implements McpServerTransportProvi
 		this.baseUrl = baseUrl;
 		this.messageEndpoint = messageEndpoint;
 		this.sseEndpoint = sseEndpoint;
-		this.sessionTimeOutSecond = sessionTimeOutSecond;
 		this.routerFunction = RouterFunctions.route()
 			.GET(this.sseEndpoint, this::handleSseConnection)
 			.POST(this.messageEndpoint, this::handleMessage)
@@ -255,6 +266,10 @@ public class WebMvcSseServerTransportProvider implements McpServerTransportProvi
 			return ServerResponse.status(HttpStatus.SERVICE_UNAVAILABLE).body("Server is shutting down");
 		}
 
+		if (checkMaxSseConnectionCount()) {
+			return ServerResponse.badRequest().body(new McpError("Too much sse connection"));
+		}
+
 		/*
 
 		// TODO 客户端唯一标识，用于处理session资源问题
@@ -278,13 +293,16 @@ public class WebMvcSseServerTransportProvider implements McpServerTransportProvi
 			return ServerResponse.sse(sseBuilder -> {
 				sseBuilder.onComplete(() -> {
 					logger.info("-----------> SSE connection completed for session: {}", sessionId);
+					sseConnectionCount.decrementAndGet();
 					sessions.remove(sessionId);
 				});
 				sseBuilder.onTimeout(() -> {
 					logger.debug("SSE connection timed out for session: {}", sessionId);
+					sseConnectionCount.decrementAndGet();
 					sessions.remove(sessionId);
 				});
 
+				sseConnectionCount.incrementAndGet();
 				WebMvcMcpSessionTransport sessionTransport = new WebMvcMcpSessionTransport(sessionId, sseBuilder);
 				McpServerSession session = sessionFactory.create(sessionTransport);
 				this.sessions.put(sessionId, session);
@@ -299,13 +317,27 @@ public class WebMvcSseServerTransportProvider implements McpServerTransportProvi
 					logger.error("Failed to send initial endpoint event: {}", e.getMessage());
 					sseBuilder.error(e);
 				}
-			}, Duration.ofSeconds(Objects.nonNull(this.sessionTimeOutSecond) ? this.sessionTimeOutSecond : 0));
+			}, Duration.ofSeconds(Objects.nonNull(mcpServerProperties.getSessionTimeOutSecond()) ? mcpServerProperties.getSessionTimeOutSecond() : 0));
 		}
 		catch (Exception e) {
 			logger.error("Failed to send initial endpoint event to session {}: {}", sessionId, e.getMessage());
+			sseConnectionCount.decrementAndGet();
 			sessions.remove(sessionId);
 			return ServerResponse.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
 		}
+	}
+
+	/**
+	 * 校验最大连接数
+	 * @return
+	 */
+	private boolean checkMaxSseConnectionCount() {
+		Integer maxSseConnectionCount = mcpServerProperties.getMaxSseConnectionCount();
+		if (maxSseConnectionCount <= 0) {
+			return false;
+		}
+		// 给个浮动
+		return sseConnectionCount.get() + 10 > maxSseConnectionCount;
 	}
 
 	/**

@@ -9,8 +9,8 @@ public class McpScheduleTask {
     private WebMvcSseServerTransportProvider webMvcSseServerTransportProvider;
 
     /**
-     * 每十分钟一次
-     * 出现 org.apache.catalina.connector.ClientAbortException 后会断开sse
+     * 每三十分钟一次,使无效的sse断开
+     * org.apache.catalina.connector.ClientAbortException 后使sse断开
      */
     @Scheduled(cron = "0 0/30 * * * ?")
     public void checkPing() {

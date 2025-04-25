@@ -24,7 +24,7 @@ public class McpWebMvcServerTransportAutoConfiguration {
 	public WebMvcSseServerTransportProvider webMvcSseServerTransportProvider(
 			ObjectProvider<ObjectMapper> objectMapperProvider, McpServerProperties serverProperties) {
 		ObjectMapper objectMapper = objectMapperProvider.getIfAvailable(ObjectMapper::new);
-		return new WebMvcSseServerTransportProvider(objectMapper, serverProperties.getBaseUrl(), serverProperties.getSseMessageEndpoint(), serverProperties.getSseEndpoint(), serverProperties.getSessionTimeOutSecond());
+		return new WebMvcSseServerTransportProvider(objectMapper, serverProperties.getBaseUrl(), serverProperties.getSseMessageEndpoint(), serverProperties.getSseEndpoint());
 	}
 
 	@Bean
