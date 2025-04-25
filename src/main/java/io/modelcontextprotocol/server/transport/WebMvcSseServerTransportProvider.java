@@ -4,6 +4,8 @@
 
 package io.modelcontextprotocol.server.transport;
 
+import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONObject;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.modelcontextprotocol.spec.McpError;
@@ -335,6 +337,8 @@ public class WebMvcSseServerTransportProvider implements McpServerTransportProvi
 
 		try {
 			String body = request.body(String.class);
+			body = changeBody(body, sessionId);
+
 			McpSchema.JSONRPCMessage message = McpSchema.deserializeJsonRpcMessage(objectMapper, body);
 
 			// Process the message through the session's handle method
@@ -350,6 +354,32 @@ public class WebMvcSseServerTransportProvider implements McpServerTransportProvi
 			logger.error("Error handling message: {}", e.getMessage());
 			return ServerResponse.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new McpError(e.getMessage()));
 		}
+	}
+
+	private String changeBody(String body, String sessionId) {
+		try {
+			// {"jsonrpc":"2.0","method":"tools/call","id":"2c487bdd-3","params":{"name":"runner","arguments":{"lang":"python","code":"print(1)"}}}
+			JSONObject bodyObject = JSON.parseObject(body);
+			if (!Objects.equals(bodyObject.getString("method"), McpSchema.METHOD_TOOLS_CALL)) {
+				return body;
+			}
+			JSONObject paramObject = bodyObject.getJSONObject("params");
+			if (Objects.isNull(paramObject)) {
+				paramObject = new JSONObject();
+			}
+			JSONObject argumentsObject = paramObject.getJSONObject("arguments");
+			if (Objects.isNull(argumentsObject)) {
+				argumentsObject = new JSONObject();
+			}
+			argumentsObject.put(McpServerUtil.SSE_SESSION_ID, sessionId);
+			paramObject.put("arguments", argumentsObject);
+			bodyObject.put("params", paramObject);
+
+			body = bodyObject.toJSONString();
+		} catch (Exception e) {
+			logger.error("io.modelcontextprotocol.server.transport.WebMvcSseServerTransportProvider.handleMessage", e);
+		}
+		return body;
 	}
 
 	public void checkPing() {

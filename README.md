@@ -15,6 +15,9 @@ org.springframework.ai.mcp.server.autoconfigure.McpServerProperties 中出现的
 
 
 # 自定义功能
+## 透传sse的sessionId到工具中
+工具参数不允许使用sseSessionId  
+![img.png](imgs/img_4.png)
 ## session没有timeout功能  
 解决办法：  
 - org.springframework.ai.mcp.server.autoconfigure.McpServerProperties 新增 sessionTimeOutSecond 属性，单位：秒

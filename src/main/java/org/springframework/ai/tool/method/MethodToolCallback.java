@@ -18,6 +18,7 @@ package org.springframework.ai.tool.method;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import io.modelcontextprotocol.server.transport.McpServerUtil;
+import mcp.server.annotarion.SseSessionId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.model.ToolContext;
@@ -135,7 +136,7 @@ public class MethodToolCallback implements ToolCallback {
 			if (parameter.getType().isAssignableFrom(ToolContext.class)) {
 				return toolContext;
 			}
-			Object rawArgument = toolInputArguments.get(parameter.getName());
+			Object rawArgument = parameter.isAnnotationPresent(SseSessionId.class) ? toolInputArguments.get(McpServerUtil.SSE_SESSION_ID) : toolInputArguments.get(parameter.getName()) ;
 			return McpServerUtil.buildTypedArgument(rawArgument, parameter);
 		}).toArray();
 	}

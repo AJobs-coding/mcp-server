@@ -19,6 +19,8 @@ import java.util.Map;
 public class McpServerUtil {
     private static final Logger logger = LoggerFactory.getLogger(McpServerUtil.class);
 
+    public static final String SSE_SESSION_ID = "sseSessionId";
+
 
     /**
      * 添加自定义的请求处理器
